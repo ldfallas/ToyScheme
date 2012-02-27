@@ -6,8 +6,8 @@ module ScEnv where
        import Control.Monad
        import Control.Monad.Error
 
-       type ScMonad = ErrorT String IO
-
+       type ScInterpreterMonad = ErrorT String IO
+       
        data Env = Env (IORef [(String,IORef Expr)], IORef Env)                  
                   | NullEnv
 
@@ -19,8 +19,9 @@ module ScEnv where
                    | ScNil
                    | ScBool Bool
                    | ScQuote Expr
-                   | ScEnv 
-            deriving Show
+                   | ScEnv
+                   | ScPrimitive (Expr -> ScInterpreterMonad Expr) 
+        --    deriving Show
       
 
        createRootEnv =

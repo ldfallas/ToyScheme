@@ -2,11 +2,13 @@ module ScEval where
 
   import ScEnv
   import ScParser
+  import ScPPrint
 
   import Control.Monad.Error
 
-  type ScInterpreterMonad = ErrorT String IO
+  
 
+  -- | Evaluation
   evalExpr :: Expr -> ScInterpreterMonad Expr
   evalExpr number@(ScNumber _) = return number
   evalExpr expr = throwError "Not implemented"
@@ -15,7 +17,10 @@ module ScEval where
   evalString code env =
    do
      r <- runErrorT $ parseAndEval code env
-     print $ show r
+     case r of
+        Left e -> print e
+        Right expr -> print (renderExpr expr) 
+     --print $ show r
      return ()
    where
       parseAndEval code env =
