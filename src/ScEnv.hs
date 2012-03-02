@@ -20,13 +20,26 @@ module ScEnv where
                    | ScBool Bool
                    | ScQuote Expr
                    | ScEnv
-                   | ScPrimitive (Expr -> ScInterpreterMonad Expr) 
+                   | ScPrimitive ([Expr] -> ScInterpreterMonad Expr) 
         --    deriving Show
       
+       addNumericValue :: Expr -> Expr -> ScInterpreterMonad Expr
+       addNumericValue (ScNumber x) (ScNumber y) =  return (ScNumber $ x + y)
+       addNumericValue (ScDouble x) (ScDouble y) =  return (ScDouble $ x + y)
+       addNumericValue (ScDouble x) (ScNumber y) =  return (ScDouble $ x + (fromInteger y))
+       addNumericValue (ScNumber x) (ScDouble y) =  return (ScDouble $ (fromInteger x) + y)
+       addNumericValue _ _ = throwError "Incorrect plus arguments"
+       
+       plusPrimitive =
+         ScPrimitive plusCode
+        where
+          plusCode (first:rest) = foldM addNumericValue first rest 
+          plusCode _ = return (ScNumber 0)             
 
-       createRootEnv =
+       createRootEnv  =
          do
-           bindings <- newIORef []
+           plusRef <- newIORef plusPrimitive
+           bindings <- newIORef [("+",plusRef)]
            parentEnv <- newIORef NullEnv
            return $ Env (bindings,parentEnv)
 

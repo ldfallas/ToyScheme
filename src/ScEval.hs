@@ -6,12 +6,39 @@ module ScEval where
 
   import Control.Monad.Error
 
-  
+  isSpecialForm name = False
 
   -- | Evaluation
-  evalExpr :: Expr -> ScInterpreterMonad Expr
-  evalExpr number@(ScNumber _) = return number
-  evalExpr expr = throwError "Not implemented"
+  evalExpr :: Expr -> Env -> ScInterpreterMonad Expr
+  evalExpr number@(ScNumber _) _ = return number
+  evalExpr cons@(ScCons (ScSymbol name) rest) env | not $ isSpecialForm name =
+       do 
+         args <- consToList rest
+         evaluatedArgs <- mapM (\e -> evalExpr e env) args
+         toApplyMaybe <- (liftIO $ lookupEnv env name)
+         case toApplyMaybe of
+            Nothing -> throwError "Symbol not found"
+            Just toApply -> apply toApply evaluatedArgs env  
+  evalExpr expr _ = throwError "Not implemented"
+
+  apply :: Expr -> [Expr] -> Env -> ScInterpreterMonad Expr
+  apply (ScPrimitive p) exprs env =
+     p exprs 
+  apply _ _ _ = throwError "Application error"
+
+  consToList :: Expr -> ScInterpreterMonad [Expr]        
+  consToList (ScCons next rest) = 
+      do
+        cdrList <- consToList rest
+        return $ next : cdrList
+  consToList ScNil = return []
+  consToList _ = throwError "Argument list is not a proper list"
+
+  evalStringOnRoot code =
+     do
+       rootEnv <- createRootEnv
+       evalString code rootEnv
+  
 
   evalString :: String -> Env -> IO ()
   evalString code env =
@@ -28,7 +55,7 @@ module ScEval where
         parsed <- case parseIt code of
                     (Right exp) -> return exp
                     (Left x) -> throwError "Parse error"
-        evalResult <- evalExpr parsed
+        evalResult <- evalExpr parsed env
         return evalResult
   --   let expr = parseIt code
          
