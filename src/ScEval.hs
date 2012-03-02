@@ -6,19 +6,24 @@ module ScEval where
 
   import Control.Monad.Error
 
-  isSpecialForm name = False
+  isSpecialForm (ScSymbol name) = False
+  isSpecialForm _ = False
 
   -- | Evaluation
   evalExpr :: Expr -> Env -> ScInterpreterMonad Expr
   evalExpr number@(ScNumber _) _ = return number
-  evalExpr cons@(ScCons (ScSymbol name) rest) env | not $ isSpecialForm name =
+  evalExpr cons@(ScCons head rest) env | not $ isSpecialForm head =
        do 
          args <- consToList rest
          evaluatedArgs <- mapM (\e -> evalExpr e env) args
-         toApplyMaybe <- (liftIO $ lookupEnv env name)
-         case toApplyMaybe of
-            Nothing -> throwError "Symbol not found"
-            Just toApply -> apply toApply evaluatedArgs env  
+         toApply <- evalExpr head env
+         apply toApply evaluatedArgs env  
+  evalExpr (ScSymbol name) env =
+     do
+       bindingValue <- (liftIO $ lookupEnv env name)
+       case bindingValue of
+          Nothing -> throwError "Symbol not found"
+          Just value -> return value
   evalExpr expr _ = throwError "Not implemented"
 
   apply :: Expr -> [Expr] -> Env -> ScInterpreterMonad Expr
