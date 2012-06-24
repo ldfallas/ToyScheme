@@ -6,24 +6,47 @@ module ScEval where
 
   import Control.Monad.Error
 
-  isSpecialForm (ScSymbol name) = False
-  isSpecialForm _ = False
+  isSpecialForm :: String -> Bool
+  isSpecialForm "define" = True
+  isSpecialForm name = False
+
 
   -- | Evaluation
   evalExpr :: Expr -> Env -> ScInterpreterMonad Expr
   evalExpr number@(ScNumber _) _ = return number
-  evalExpr cons@(ScCons head rest) env | not $ isSpecialForm head =
+  evalExpr symbol@(ScSymbol symbolName) env = 
+      do
+         symbolValue <- (liftIO $ lookupEnv env symbolName)
+         case symbolValue of
+            Nothing -> throwError $ "Symbol not found: " ++ symbolName
+            Just value -> return value
+         
+  evalExpr (ScCons 
+               (ScSymbol "define")
+               (ScCons 
+                   name@(ScSymbol symbolToDefine)
+                   (ScCons
+                      value
+                      ScNil))) 
+           env =
+      evaluateDefineSymbol symbolToDefine value env
+
+  evalExpr (ScCons 
+               (ScSymbol "progn")
+               rest) 
+           env =
+      do 
+        expressions <- (consToList rest)
+        evaluateExpressionSequence expressions  env
+
+
+  evalExpr cons@(ScCons symbol@(ScSymbol name) rest) env | not $ isSpecialForm name =
        do 
          args <- consToList rest
          evaluatedArgs <- mapM (\e -> evalExpr e env) args
-         toApply <- evalExpr head env
+         toApply <- evalExpr symbol env
          apply toApply evaluatedArgs env  
-  evalExpr (ScSymbol name) env =
-     do
-       bindingValue <- (liftIO $ lookupEnv env name)
-       case bindingValue of
-          Nothing -> throwError "Symbol not found"
-          Just value -> return value
+
   evalExpr expr _ = throwError "Not implemented"
 
   apply :: Expr -> [Expr] -> Env -> ScInterpreterMonad Expr
@@ -38,6 +61,23 @@ module ScEval where
         return $ next : cdrList
   consToList ScNil = return []
   consToList _ = throwError "Argument list is not a proper list"
+
+
+  evaluateDefineSymbol :: String -> Expr ->  Env -> ScInterpreterMonad Expr
+  evaluateDefineSymbol name value env =
+     do
+       evaluatedValue <- evalExpr value env
+       (liftIO $ insertInCurrentEnv env name evaluatedValue)
+       return ScNil
+          
+  evaluateExpressionSequence :: [Expr] ->  Env -> ScInterpreterMonad Expr
+  evaluateExpressionSequence [] _ = return ScNil
+  evaluateExpressionSequence [last] env = evalExpr last env
+  evaluateExpressionSequence (expr:rest) env =
+          do 
+             _ <- evalExpr expr env
+             evaluateExpressionSequence rest env
+  
 
   evalStringOnRoot code =
      do

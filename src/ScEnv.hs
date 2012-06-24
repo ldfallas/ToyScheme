@@ -1,4 +1,5 @@
 
+
 module ScEnv where
 
        import Data.IORef
@@ -86,7 +87,9 @@ module ScEnv where
                      return env
                 Nothing -> insertInCurrentEnv env varName value
 
-       insertInCurrentEnv env varName value =
+       
+       insertInCurrentEnv :: Env -> String -> Expr -> IO Env
+       insertInCurrentEnv env varName value = 
         case env of
             NullEnv -> return env  -- TODO throw error
             Env (bindingsRef,_) ->
@@ -96,4 +99,7 @@ module ScEnv where
                  _ <- writeIORef bindingsRef ((varName, newValueRef):bindings)
                  return env
                   
+--       insertInCurrentEnvM :: Env -> String -> Expr -> ScInterpreterMonad Env
+--       insertInCurrentEnvM env varName value =
+--         liftM (insertInCurrentEnv env varName value)
       
