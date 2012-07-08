@@ -32,6 +32,18 @@ module ScEval where
       evaluateDefineSymbol symbolToDefine value env
 
   evalExpr (ScCons 
+               (ScSymbol "lambda")
+               (ScCons 
+                   (ScCons (ScSymbol argumentName) ScNil)
+                   (ScCons
+                      expr
+                      ScNil))) 
+           env =
+    do
+     return $  ScClosure [argumentName] expr env 
+
+
+  evalExpr (ScCons 
                (ScSymbol "progn")
                rest) 
            env =
@@ -52,6 +64,10 @@ module ScEval where
   apply :: Expr -> [Expr] -> Env -> ScInterpreterMonad Expr
   apply (ScPrimitive p) exprs env =
      p exprs 
+  apply (ScClosure arguments expr definitionEnv) exprs _ =
+     do
+        newEnv <- liftIO $ createNewEnvWithParent (zip arguments exprs) definitionEnv
+        evalExpr expr newEnv
   apply _ _ _ = throwError "Application error"
 
   consToList :: Expr -> ScInterpreterMonad [Expr]        

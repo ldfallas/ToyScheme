@@ -21,6 +21,7 @@ module ScEnv where
                    | ScBool Bool
                    | ScQuote Expr
                    | ScEnv
+                   | ScClosure [String] Expr Env
                    | ScPrimitive ([Expr] -> ScInterpreterMonad Expr) 
         --    deriving Show
       
@@ -43,6 +44,20 @@ module ScEnv where
            bindings <- newIORef [("+",plusRef)]
            parentEnv <- newIORef NullEnv
            return $ Env (bindings,parentEnv)
+
+       createNewEnvWithParent :: [(String,Expr)] -> Env -> IO Env
+       createNewEnvWithParent bindings parentEnv  =
+         do
+           plusRef <- newIORef plusPrimitive
+           newVarBindings <- mapM (\(varName,expr) -> 
+                                          do
+                                            newBindingRef <- newIORef expr
+                                            return (varName, newBindingRef )) 
+                                   bindings
+           bindingsRef <- newIORef newVarBindings 
+           parentEnvRef <- newIORef parentEnv
+           return $ Env (bindingsRef,parentEnvRef)
+
 
        lookupEnvValueRef :: Env -> String -> IO (Maybe (IORef Expr))
        lookupEnvValueRef env varName =
