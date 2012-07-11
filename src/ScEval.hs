@@ -8,11 +8,14 @@ module ScEval where
 
   isSpecialForm :: String -> Bool
   isSpecialForm "define" = True
+  isSpecialForm "if" = True
+  isSpecialForm "lambda" = True
   isSpecialForm name = False
 
 
   -- | Evaluation
   evalExpr :: Expr -> Env -> ScInterpreterMonad Expr
+  evalExpr boolValue@(ScBool _) _ = return boolValue
   evalExpr number@(ScNumber _) _ = return number
   evalExpr symbol@(ScSymbol symbolName) env = 
       do
@@ -41,6 +44,24 @@ module ScEval where
            env =
     do
      return $  ScClosure [argumentName] expr env 
+
+
+  evalExpr (ScCons 
+               (ScSymbol "if")
+               (ScCons condition
+                  (ScCons
+                     thenExpr
+                     (ScCons
+                        elseExpr
+                        ScNil)))) 
+           env =
+      do 
+        conditionEvaluation <- (evalExpr condition env)
+        case conditionEvaluation of
+          ScBool False -> evalExpr elseExpr env
+          _ -> evalExpr thenExpr env
+        
+
 
 
   evalExpr (ScCons 

@@ -24,13 +24,37 @@ module ScEnv where
                    | ScClosure [String] Expr Env
                    | ScPrimitive ([Expr] -> ScInterpreterMonad Expr) 
         --    deriving Show
+
+       type DoubleFunc = Double -> Double -> Double
+       type IntegerFunc = Integer -> Integer -> Integer
+
+       applyNumericValue :: Expr -> Expr -> DoubleFunc -> IntegerFunc -> ScInterpreterMonad Expr
+       applyNumericValue (ScNumber x) (ScNumber y) _ f =  return (ScNumber $ x `f` y)
+       applyNumericValue (ScDouble x) (ScDouble y) f _ =  return (ScDouble $ x `f` y)
+       applyNumericValue (ScDouble x) (ScNumber y) f _ =  return (ScDouble $ x `f` (fromInteger y))
+       applyNumericValue (ScNumber x) (ScDouble y) f _ =  return (ScDouble $ (fromInteger x) `f` y)
+       applyNumericValue _ _ _ _ = throwError "Incorrect plus arguments"
+
       
        addNumericValue :: Expr -> Expr -> ScInterpreterMonad Expr
-       addNumericValue (ScNumber x) (ScNumber y) =  return (ScNumber $ x + y)
-       addNumericValue (ScDouble x) (ScDouble y) =  return (ScDouble $ x + y)
-       addNumericValue (ScDouble x) (ScNumber y) =  return (ScDouble $ x + (fromInteger y))
-       addNumericValue (ScNumber x) (ScDouble y) =  return (ScDouble $ (fromInteger x) + y)
-       addNumericValue _ _ = throwError "Incorrect plus arguments"
+       addNumericValue x y = applyNumericValue x y (+) (+)
+
+       multiNumericValue :: Expr -> Expr -> ScInterpreterMonad Expr
+       multiNumericValue x y = applyNumericValue x y (*) (*)
+
+       minusNumericValue :: Expr -> Expr -> ScInterpreterMonad Expr
+       minusNumericValue x y = applyNumericValue x y (-) (-)
+
+       --divNumericValue :: Expr -> Expr -> ScInterpreterMonad Expr
+       --divNumericValue x y = applyNumericValue x y (/) (/)
+
+       gtNumericValue :: Expr -> Expr -> ScInterpreterMonad Expr
+       gtNumericValue (ScNumber x) (ScNumber y) =  return (ScBool $ x > y)
+       gtNumericValue (ScDouble x) (ScDouble y) =  return (ScBool $ x > y)
+       gtNumericValue (ScDouble x) (ScNumber y) =  return (ScBool $ x > (fromInteger y))
+       gtNumericValue (ScNumber x) (ScDouble y) =  return (ScBool $ (fromInteger x) > y)
+       gtNumericValue _ _ = throwError "Incorrect plus arguments"
+
        
        plusPrimitive =
          ScPrimitive plusCode
@@ -38,10 +62,39 @@ module ScEnv where
           plusCode (first:rest) = foldM addNumericValue first rest 
           plusCode _ = return (ScNumber 0)             
 
+       minusPrimitive =
+         ScPrimitive minusCode
+        where
+          minusCode (first:rest) = foldM minusNumericValue first rest 
+          minusCode _ = return (ScNumber 0)             
+
+
+       gtPrimitive =
+         ScPrimitive gtCode
+        where
+          gtCode [first,rest] = gtNumericValue first rest
+          gtCode _ = return (ScBool False)             
+
+
+       timesPrimitive =
+         ScPrimitive timesCode
+        where
+          timesCode (first:rest) = foldM multiNumericValue first rest 
+          timesCode _ = return (ScNumber 1)             
+
+
        createRootEnv  =
          do
-           plusRef <- newIORef plusPrimitive
-           bindings <- newIORef [("+",plusRef)]
+           primitives <- return  [("+", plusPrimitive),
+                                  ("-", minusPrimitive),
+                                  (">", gtPrimitive),
+                                  ("*", timesPrimitive)]
+           bindingVars <- mapM (\(name,primitive) ->
+                                  do
+                                    primitiveRef <- newIORef primitive
+                                    return (name, primitiveRef))
+                               primitives 
+           bindings <- newIORef bindingVars
            parentEnv <- newIORef NullEnv
            return $ Env (bindings,parentEnv)
 
