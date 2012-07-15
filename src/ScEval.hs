@@ -17,6 +17,7 @@ module ScEval where
   evalExpr :: Expr -> Env -> ScInterpreterMonad Expr
   evalExpr boolValue@(ScBool _) _ = return boolValue
   evalExpr number@(ScNumber _) _ = return number
+  evalExpr str@(ScString _) _ = return str
   evalExpr symbol@(ScSymbol symbolName) env = 
       do
          symbolValue <- (liftIO $ lookupEnv env symbolName)
@@ -120,18 +121,18 @@ module ScEval where
   evalStringOnRoot code =
      do
        rootEnv <- createRootEnv
-       evalString code rootEnv
+       evalStringAndPrint code rootEnv
+
+  evalStringOnRootToString code =
+     do
+       rootEnv <- createRootEnv
+       evalStringToString code rootEnv
   
 
-  evalString :: String -> Env -> IO ()
+  evalString :: String -> Env -> IO (Either String Expr)
   evalString code env =
    do
-     r <- runErrorT $ parseAndEval code env
-     case r of
-        Left e -> print e
-        Right expr -> print (renderExpr expr) 
-     --print $ show r
-     return ()
+     runErrorT $ parseAndEval code env
    where
       parseAndEval code env =
        do 
@@ -140,5 +141,18 @@ module ScEval where
                     (Left x) -> throwError "Parse error"
         evalResult <- evalExpr parsed env
         return evalResult
-  --   let expr = parseIt code
-         
+
+   
+  evalStringToString :: String -> Env -> IO String
+  evalStringToString codeString env =
+     do 
+       evalResult <- evalString codeString env
+       case evalResult of
+          Left e -> return $ "Error: " ++ e
+          Right expr -> return $ renderExpr expr
+
+  evalStringAndPrint :: String -> Env -> IO ()
+  evalStringAndPrint codeString env =
+     do 
+        resultString <- evalStringToString codeString env
+        print resultString
