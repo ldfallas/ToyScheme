@@ -4,6 +4,7 @@ module ScEnv where
 
        import Data.IORef
 
+       import Data.Foldable(foldr')
        import Control.Monad
        import Control.Monad.Error
 
@@ -82,13 +83,33 @@ module ScEnv where
           timesCode (first:rest) = foldM multiNumericValue first rest 
           timesCode _ = return (ScNumber 1)             
 
+       listPrimitiveList =
+          [
+             ("null?", ScPrimitive nullPrimitive),
+             ("list", ScPrimitive listPrimitive),
+             ("car", ScPrimitive carPrimitive),
+             ("cdr", ScPrimitive cdrPrimitive)
+          ]
+        where
+           nullPrimitive [first] = 
+               case first of
+                 ScNil -> return $ ScBool True
+                 _     -> return $ ScBool False
+           nullPrimitive _ = throwError "Incorrect number of arguments" 
+           listPrimitive args = return $  foldr' (\current rest -> ScCons current rest) ScNil args
+           carPrimitive [ScCons first _] = return first
+           carPrimitive _ = throwError "Incorrect arguments for car"
+           cdrPrimitive [ScCons _ rest] = return rest
+           cdrPrimitive _ = throwError "Incorrect arguments for cdr"
+       
 
        createRootEnv  =
          do
-           primitives <- return  [("+", plusPrimitive),
+           primitives <- return  ([("+", plusPrimitive),
                                   ("-", minusPrimitive),
                                   (">", gtPrimitive),
                                   ("*", timesPrimitive)]
+                                 ++ listPrimitiveList)
            bindingVars <- mapM (\(name,primitive) ->
                                   do
                                     primitiveRef <- newIORef primitive

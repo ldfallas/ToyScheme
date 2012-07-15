@@ -80,7 +80,9 @@ module ScEval where
          toApply <- evalExpr symbol env
          apply toApply evaluatedArgs env  
 
-  evalExpr expr _ = throwError "Not implemented"
+  evalExpr nil@ScNil _ = return nil
+
+  evalExpr expr _ = throwError $ "Evaluation of \"" ++ (renderExpr expr) ++ "\" is not implemented"
 
   apply :: Expr -> [Expr] -> Env -> ScInterpreterMonad Expr
   apply (ScPrimitive p) exprs env =
@@ -115,7 +117,6 @@ module ScEval where
              _ <- evalExpr expr env
              evaluateExpressionSequence rest env
   
-
   evalStringOnRoot code =
      do
        rootEnv <- createRootEnv
