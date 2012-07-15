@@ -11,16 +11,16 @@ testNumLiteralEval =
        (do
          evalResult <- evalStringOnRootToString "10"  
          (assertEqual "Eval numeric literal"
-                 evalResult
-                 "10"))
+                 "10"
+                 evalResult))
 
 testStringLiteralEval =
     TestCase
        (do
          evalResult <- evalStringOnRootToString "\"hola\""  
          (assertEqual "Eval string  literal"
-                 evalResult
-                 "\"hola\""))
+                 "\"hola\""                 
+                 evalResult))
                
 
 testPrimitiveApplication =
@@ -32,12 +32,28 @@ testPrimitiveApplication =
                  "20"))
                
                
+testFactorial1 =
+    TestCase
+       (do
+         program <- return $ "(progn " ++   
+                             "  (define factorial " ++
+                             "     (lambda (x) " ++
+                             "       (if (> x 0) " ++
+                             "           (* x (factorial (- x 1)))" ++
+                             "           1)))" ++
+                             "  (factorial 5))"
+         evalResult <- evalStringOnRootToString program  
+         (assertEqual "Eval basic factorial implementation"
+                 "120"
+                 evalResult
+                 ))
 
                
 
 tests = TestList [testNumLiteralEval,
                   testStringLiteralEval,
-                  testPrimitiveApplication]
+                  testPrimitiveApplication,
+                  testFactorial1]
 
 main =
      do runTestTT tests
