@@ -4,7 +4,19 @@ module ScParser where
        import Text.Parsec
        import Text.Parsec.Token
        import Text.Parsec.Language
+       import Data.Functor.Identity
        import ScEnv
+
+--       data Expr  = ScSymbol String
+--                   | ScString String
+--                   | ScNumber Integer
+--                   | ScDouble Double 
+--                   | ScCons Expr  Expr 
+--                   | ScNil
+--                   | ScBool Bool
+--                   | ScQuote Expr 
+--                   | ScEnv
+--
 
           
 
@@ -30,6 +42,9 @@ module ScParser where
           naturalOrFloat = naturalOrFloatParser
        } = schemeTokenParser
 
+       type ScParserExprType a =  ParsecT String () Data.Functor.Identity.Identity (Expr a)
+
+       boolLiteral :: ScExecutable a => ScParserExprType a
        boolLiteral = lexParser (
                         do 
                           char '#'
@@ -37,6 +52,7 @@ module ScParser where
                           return $ ScBool $ val == 't'
                     )
 
+       quoteParser :: ScExecutable a => ScParserExprType a
        quoteParser = lexParser (
                         do 
                           char '\''
@@ -47,6 +63,7 @@ module ScParser where
 
        dotParser = lexParser $ char '.'
 
+       atom :: ScExecutable a => ScParserExprType a
        atom =
           (do 
              id <- idParser
@@ -63,12 +80,14 @@ module ScParser where
           <|> boolLiteral
           <|> quoteParser
 
+       dottedSuffixParser :: ScExecutable a => ScParserExprType a
        dottedSuffixParser =     
           do 
              dotParser
              finalExpr <- expressionParser
              return finalExpr
 
+       parExpressionParser :: ScExecutable a => ScParserExprType a
        parExpressionParser = 
           do (exprs, last) <- parParser 
                        (do 
@@ -79,8 +98,9 @@ module ScParser where
                                    Nothing -> (seq, ScNil)))
              return $ foldr ScCons last exprs
 
+       expressionParser :: ScExecutable a => ScParserExprType a
        expressionParser =
             atom <|> parExpressionParser
             
-
+       parseIt :: ScExecutable a => String -> Either ParseError (Expr a)
        parseIt input = parse expressionParser "" input

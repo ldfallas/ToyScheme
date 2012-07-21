@@ -9,27 +9,36 @@ module ScEnv where
        import Control.Monad.Error
 
        type ScInterpreterMonad = ErrorT String IO
+
+
+       class ScExecutable a where
+          prepare :: (Expr a) -> a
+          eval :: a -> (Env a) -> ScInterpreterMonad (Expr a)
+          apply :: (Expr a) -> [(Expr a)] -> (Env a) -> ScInterpreterMonad (Expr a)
+
        
-       data Env = Env (IORef [(String,IORef Expr)], IORef Env)                  
+       data  ScExecutable a => Env a = Env (IORef [(String,IORef (Expr a))], IORef (Env a))                  
                   | NullEnv
 
-       data Expr = ScSymbol String
+       data ScExecutable a => Expr a = ScSymbol String
                    | ScString String
                    | ScNumber Integer
                    | ScDouble Double 
-                   | ScCons Expr Expr
+                   | ScCons (Expr a) (Expr a)
                    | ScNil
                    | ScBool Bool
-                   | ScQuote Expr
+                   | ScQuote (Expr a)
                    | ScEnv
-                   | ScClosure [String] Expr Env
-                   | ScPrimitive ([Expr] -> ScInterpreterMonad Expr) 
+                   | ScClosure [String] a (Env a)
+                   | ScPrimitive ([Expr a] -> ScInterpreterMonad (Expr a)) 
         --    deriving Show
 
+       
        type DoubleFunc = Double -> Double -> Double
        type IntegerFunc = Integer -> Integer -> Integer
+       
 
-       applyNumericValue :: Expr -> Expr -> DoubleFunc -> IntegerFunc -> ScInterpreterMonad Expr
+       applyNumericValue ::  ScExecutable a =>  Expr a -> Expr a -> DoubleFunc -> IntegerFunc -> ScInterpreterMonad (Expr a)
        applyNumericValue (ScNumber x) (ScNumber y) _ f =  return (ScNumber $ x `f` y)
        applyNumericValue (ScDouble x) (ScDouble y) f _ =  return (ScDouble $ x `f` y)
        applyNumericValue (ScDouble x) (ScNumber y) f _ =  return (ScDouble $ x `f` (fromInteger y))
@@ -37,32 +46,33 @@ module ScEnv where
        applyNumericValue _ _ _ _ = throwError "Incorrect plus arguments"
 
       
-       addNumericValue :: Expr -> Expr -> ScInterpreterMonad Expr
+       addNumericValue ::  ScExecutable a => Expr a -> Expr a -> ScInterpreterMonad (Expr a)
        addNumericValue x y = applyNumericValue x y (+) (+)
 
-       multiNumericValue :: Expr -> Expr -> ScInterpreterMonad Expr
+       multiNumericValue :: ScExecutable a => Expr a -> Expr a -> ScInterpreterMonad (Expr a)
        multiNumericValue x y = applyNumericValue x y (*) (*)
 
-       minusNumericValue :: Expr -> Expr -> ScInterpreterMonad Expr
+       minusNumericValue ::  ScExecutable a => Expr a -> Expr a -> ScInterpreterMonad (Expr a)
        minusNumericValue x y = applyNumericValue x y (-) (-)
 
        --divNumericValue :: Expr -> Expr -> ScInterpreterMonad Expr
        --divNumericValue x y = applyNumericValue x y (/) (/)
 
-       gtNumericValue :: Expr -> Expr -> ScInterpreterMonad Expr
+       gtNumericValue ::  ScExecutable a => Expr a -> Expr a -> ScInterpreterMonad (Expr a)
        gtNumericValue (ScNumber x) (ScNumber y) =  return (ScBool $ x > y)
        gtNumericValue (ScDouble x) (ScDouble y) =  return (ScBool $ x > y)
        gtNumericValue (ScDouble x) (ScNumber y) =  return (ScBool $ x > (fromInteger y))
        gtNumericValue (ScNumber x) (ScDouble y) =  return (ScBool $ (fromInteger x) > y)
        gtNumericValue _ _ = throwError "Incorrect plus arguments"
 
-       
+       plusPrimitive ::  ScExecutable a => Expr a
        plusPrimitive =
          ScPrimitive plusCode
         where
           plusCode (first:rest) = foldM addNumericValue first rest 
           plusCode _ = return (ScNumber 0)             
 
+       minusPrimitive :: ScExecutable a => Expr a
        minusPrimitive =
          ScPrimitive minusCode
         where
@@ -70,19 +80,21 @@ module ScEnv where
           minusCode _ = return (ScNumber 0)             
 
 
+       gtPrimitive :: ScExecutable a => Expr a
        gtPrimitive =
          ScPrimitive gtCode
         where
           gtCode [first,rest] = gtNumericValue first rest
           gtCode _ = return (ScBool False)             
 
-
+       timesPrimitive :: ScExecutable a => Expr a
        timesPrimitive =
          ScPrimitive timesCode
         where
           timesCode (first:rest) = foldM multiNumericValue first rest 
           timesCode _ = return (ScNumber 1)             
 
+       listPrimitiveList :: ScExecutable a => [(String,Expr a)]
        listPrimitiveList =
           [
              ("null?", ScPrimitive nullPrimitive),
@@ -103,6 +115,7 @@ module ScEnv where
            cdrPrimitive _ = throwError "Incorrect arguments for cdr"
        
 
+       createRootEnv :: ScExecutable a => IO (Env a)
        createRootEnv  =
          do
            primitives <- return  ([("+", plusPrimitive),
@@ -119,10 +132,9 @@ module ScEnv where
            parentEnv <- newIORef NullEnv
            return $ Env (bindings,parentEnv)
 
-       createNewEnvWithParent :: [(String,Expr)] -> Env -> IO Env
+       createNewEnvWithParent ::  ScExecutable a => [(String,Expr a)] -> Env a -> IO (Env a)
        createNewEnvWithParent bindings parentEnv  =
          do
-           plusRef <- newIORef plusPrimitive
            newVarBindings <- mapM (\(varName,expr) -> 
                                           do
                                             newBindingRef <- newIORef expr
@@ -130,10 +142,10 @@ module ScEnv where
                                    bindings
            bindingsRef <- newIORef newVarBindings 
            parentEnvRef <- newIORef parentEnv
-           return $ Env (bindingsRef,parentEnvRef)
+           return $ Env (bindingsRef, parentEnvRef)
 
 
-       lookupEnvValueRef :: Env -> String -> IO (Maybe (IORef Expr))
+       lookupEnvValueRef ::  ScExecutable a => Env a -> String -> IO (Maybe (IORef (Expr a)))
        lookupEnvValueRef env varName =
           case env of
            NullEnv -> return Nothing
@@ -145,7 +157,7 @@ module ScEnv where
                  Just valRef -> return $ Just valRef
                  Nothing -> lookupEnvValueRef parent varName
 
-       lookupEnv :: Env -> String -> IO (Maybe Expr)
+       lookupEnv ::  ScExecutable a => (Env a) -> String -> IO (Maybe (Expr a))
        lookupEnv env varName =
               join (fmap  (maybe (return Nothing) ((>>= (return . Just)) . readIORef )) $ lookupEnvValueRef env varName) 
 
@@ -177,7 +189,7 @@ module ScEnv where
                 Nothing -> insertInCurrentEnv env varName value
 
        
-       insertInCurrentEnv :: Env -> String -> Expr -> IO Env
+       insertInCurrentEnv :: ScExecutable a =>(Env a) -> String -> (Expr a) -> IO (Env a)
        insertInCurrentEnv env varName value = 
         case env of
             NullEnv -> return env  -- TODO throw error

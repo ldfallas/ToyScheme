@@ -5,7 +5,7 @@ module ScPPrint where
     import Text.PrettyPrint.HughesPJ 
 
 
-    toStringP :: Expr -> Doc
+    toStringP :: ScExecutable a => Expr a -> Doc
     toStringP (ScSymbol name) = text name
     toStringP (ScNumber num) = integer num
     toStringP (ScDouble num) = double num
@@ -20,20 +20,20 @@ module ScPPrint where
          toStringPCons other = [(text ".") , (toStringP other) ]
 
 
-    renderExpr :: Expr -> String
+    renderExpr :: ScExecutable a => Expr a -> String
     renderExpr = (renderStyle style) . toStringP
 
-    parseAndPrint text =
-       case (parseIt text) of
-         Right parsed -> Just $ toStringP parsed
-         _ -> Nothing
+    -- parseAndPrint text =
+    --    case (parseIt text) of
+    --      Right parsed -> Just $ toStringP parsed
+    --      _ -> Nothing
 
 
-    parseAndRender style text =
-       case (parseIt text) of
-         Right parsed -> putStr $ renderStyle style  $ toStringP parsed
-         _ -> putStr "ParseError"
+    -- parseAndRender style text =
+    --    case (parseIt text) of
+    --      Right parsed -> putStr $ renderStyle style  $ toStringP parsed
+    --      _ -> putStr "ParseError"
 
 
-    smallTest style =
-      parseAndRender style "(html (head (title \"Hello world\")) (body (p \"Hi\") (ol (li \"First\") (li \"Second\"))))"
+    -- smallTest style =
+    --   parseAndRender style "(html (head (title \"Hello world\")) (body (p \"Hi\") (ol (li \"First\") (li \"Second\"))))"

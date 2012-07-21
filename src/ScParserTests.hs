@@ -1,13 +1,14 @@
 import Test.HUnit
 import ScParser
 import ScEnv
+import ScEval
 import Text.Parsec
 
-compareResult :: Either ParseError Expr -> Expr -> Bool
+compareResult :: Either ParseError (Expr ScSeqExp) -> (Expr ScSeqExp) -> Bool
 compareResult (Right x) y = compareAst x y
 compareResult _ _ = False
 
-compareAst ::  Expr -> Expr -> Bool
+compareAst ::  (Expr ScSeqExp) -> (Expr ScSeqExp) -> Bool
 compareAst (ScSymbol x) (ScSymbol y) | x == y = True
 compareAst (ScNumber x) (ScNumber y) | x == y = True
 compareAst (ScBool x)   (ScBool y) | x == y = True
