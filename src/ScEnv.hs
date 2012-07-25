@@ -113,7 +113,22 @@ module ScEnv where
            carPrimitive _ = throwError "Incorrect arguments for car"
            cdrPrimitive [ScCons _ rest] = return rest
            cdrPrimitive _ = throwError "Incorrect arguments for cdr"
-       
+
+--
+       portPrimitiveList :: ScExecutable a => [(String,Expr a)]
+       portPrimitiveList =
+          [
+             ("write", ScPrimitive writePrimitive)
+          ]
+        where
+           writePrimitive [ScCons first ScNil] = 
+               do
+                  write' <- liftIO print
+                  write' (renderExpr first)
+           writePrimitive _ = throwError "Incorrect arguments for write"
+
+
+--       
 
        createRootEnv :: ScExecutable a => IO (Env a)
        createRootEnv  =
