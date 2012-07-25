@@ -1,4 +1,4 @@
-
+{-# LANGUAGE GADTs #-} 
 
 module ScEnv where
 
@@ -17,20 +17,22 @@ module ScEnv where
           apply :: (Expr a) -> [(Expr a)] -> (Env a) -> ScInterpreterMonad (Expr a)
 
        
-       data  ScExecutable a => Env a = Env (IORef [(String,IORef (Expr a))], IORef (Env a))                  
-                  | NullEnv
+       data  Env a where
+         Env :: (IORef [(String,IORef (Expr a))], IORef (Env a))                   -> Env a
+         NullEnv :: Env a
 
-       data ScExecutable a => Expr a = ScSymbol String
-                   | ScString String
-                   | ScNumber Integer
-                   | ScDouble Double 
-                   | ScCons (Expr a) (Expr a)
-                   | ScNil
-                   | ScBool Bool
-                   | ScQuote (Expr a)
-                   | ScEnv
-                   | ScClosure [String] a (Env a)
-                   | ScPrimitive ([Expr a] -> ScInterpreterMonad (Expr a)) 
+       data Expr a where
+               ScSymbol :: String -> Expr a
+               ScString :: String -> Expr a
+               ScNumber :: Integer -> Expr a
+               ScDouble :: Double -> Expr a 
+               ScCons :: (Expr a) -> (Expr a) -> (Expr a)
+               ScNil :: Expr a
+               ScBool :: Bool -> Expr a
+               ScQuote :: (Expr a) -> Expr a
+               ScEnv ::  (Expr a)
+               ScClosure :: ScExecutable a =>  [String] -> a -> (Env a) -> Expr a
+               ScPrimitive ::  ([Expr a] -> ScInterpreterMonad (Expr a))  -> Expr a
         --    deriving Show
 
        
