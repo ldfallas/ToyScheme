@@ -2,6 +2,7 @@ import Test.HUnit
 import ScParser
 import ScEnv
 import ScEval
+import ScLibrary
 import Text.Parsec
 
 
