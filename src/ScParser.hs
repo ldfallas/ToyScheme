@@ -43,6 +43,7 @@ module ScParser where
        } = schemeTokenParser
 
        type ScParserExprType a =  ParsecT String () Data.Functor.Identity.Identity (Expr a)
+       type ScParserMultiExprType a =  ParsecT String () Data.Functor.Identity.Identity [Expr a]
 
        boolLiteral :: ScExecutable a => ScParserExprType a
        boolLiteral = lexParser (
@@ -101,6 +102,17 @@ module ScParser where
        expressionParser :: ScExecutable a => ScParserExprType a
        expressionParser =
             atom <|> parExpressionParser
-            
+
+       fileParser :: ScExecutable a => ScParserMultiExprType a
+       fileParser =
+            do
+               exprs <- many1 expressionParser
+               eof
+               return exprs
+
+       parseFileContents :: ScExecutable a => String -> Either ParseError [Expr a]
+       parseFileContents input = parse fileParser "" input
+
+
        parseIt :: ScExecutable a => String -> Either ParseError (Expr a)
        parseIt input = parse expressionParser "" input
