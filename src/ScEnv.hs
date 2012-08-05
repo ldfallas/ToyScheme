@@ -4,7 +4,7 @@
 module ScEnv where
 
        import Data.IORef
-
+       import System.IO(Handle)
        import Data.Foldable(foldr')
        import Control.Monad
        import Control.Monad.Error
@@ -19,7 +19,7 @@ module ScEnv where
 
        
        data  Env a where
-         Env :: (IORef [(String,IORef (Expr a))], IORef (Env a))                   -> Env a
+         Env :: (IORef [(String,IORef (Expr a))], IORef (Env a))  -> Env a
          NullEnv :: Env a
 
        data Expr a where
@@ -32,6 +32,8 @@ module ScEnv where
                ScBool :: Bool -> Expr a
                ScQuote :: (Expr a) -> Expr a
                ScEnv ::  (Expr a)
+               ScChar :: Char -> Expr a
+               ScPort :: Handle -> Expr a
                ScClosure :: ScExecutable a =>  [String] -> a -> (Env a) -> Expr a
                ScPrimitive ::  ([Expr a] -> ScInterpreterMonad (Expr a))  -> Expr a
         --    deriving Show

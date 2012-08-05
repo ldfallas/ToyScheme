@@ -8,7 +8,10 @@ module ScLibrary where
   import Control.Monad.Error
   import Data.Foldable(foldr')
   import Control.Monad
-
+  import System.IO(hPutStr,
+                   openFile,
+                   IOMode(WriteMode),
+                   hClose)
 
   type DoubleFunc = Double -> Double -> Double
   type IntegerFunc = Integer -> Integer -> Integer
@@ -94,15 +97,34 @@ module ScLibrary where
   portPrimitiveList :: ScExecutable a => [(String,Expr a)]
   portPrimitiveList =
      [
-        ("write", ScPrimitive writePrimitive)
+        ("write", ScPrimitive writePrimitive),
+        ("open-output-file", ScPrimitive openOutputFilePrimitive),
+        ("close-output-port", ScPrimitive closeHandlePrimitive)
      ]
    where
       writePrimitive [ first ] = 
           do
              liftIO $ putStr (renderExpr first)
-             return ScNil
+             return ScNil 
+      writePrimitive [ expr, (ScPort handle)] =
+          do
+             liftIO $ hPutStr handle $ renderExpr expr
+             return ScNil       
       writePrimitive _ = throwError "Incorrect arguments for write"
 
+      openOutputFilePrimitive [ ScString fileName ] =
+        -- TODO add error handling
+        do
+          handle <- liftIO $ openFile fileName WriteMode 
+          return $ ScPort handle 
+      openOutputFilePrimitive _ = throwError "Incorrect arguments for open-output-file"
+
+      closeHandlePrimitive [ScPort handle] =
+        do
+          liftIO $ hClose handle
+          return ScNil
+      closeHandlePrimitive _ = throwError "Incorrect arguments for close primitive"
+          
 
 --       
 
