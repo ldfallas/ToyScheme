@@ -24,11 +24,20 @@ module ScEval where
 
 
   instance ScExecutable ScSeqExp where
-     prepare  boolValue@(ScBool _) = ScSeqLiteral boolValue
-     prepare number@(ScNumber _)  = ScSeqLiteral number
-     prepare str@(ScString _)  = ScSeqLiteral str
-     prepare (ScSymbol symbolName) = ScSeqSymbol symbolName
-     prepare nil@ScNil = ScSeqLiteral nil
+     prepare  boolValue@(ScBool _) = 
+                  return $ ScSeqLiteral boolValue
+
+     prepare number@(ScNumber _)  = 
+                  return $ ScSeqLiteral number
+
+     prepare str@(ScString _)  = 
+                  return $ ScSeqLiteral str
+
+     prepare (ScSymbol symbolName) = 
+                  return $ ScSeqSymbol symbolName
+
+     prepare nil@ScNil = return $ ScSeqLiteral nil
+
      prepare (ScCons 
                (ScSymbol "define")
                (ScCons 
@@ -36,7 +45,10 @@ module ScEval where
                    (ScCons
                       value
                       ScNil))) = 
-              ScSeqDefine symbolToDefine $ prepare value
+              do
+                 preparedValue <- prepare value
+                 return $ ScSeqDefine symbolToDefine preparedValue 
+
      prepare (ScCons 
                (ScSymbol "lambda")
                (ScCons 
@@ -44,7 +56,10 @@ module ScEval where
                    (ScCons
                       expr
                       ScNil))) = 
-             ScSeqLambdaCreation [argumentName] $ prepare expr 
+             do
+               preparedLambdaBody <- prepare expr 
+               return $ ScSeqLambdaCreation [argumentName]  preparedLambdaBody
+
      prepare  (ScCons 
                (ScSymbol "if")
                (ScCons condition
@@ -53,12 +68,23 @@ module ScEval where
                      (ScCons
                         elseExpr
                         ScNil)))) = 
-               ScConditional (prepare condition) (prepare thenExpr) (prepare elseExpr)
+            do
+               prepCondition <- prepare condition
+               prepThen <- prepare thenExpr
+               prepElse <- prepare elseExpr
+               return $ ScConditional prepCondition prepThen prepElse
+
      prepare (ScCons 
                (ScSymbol "progn")
-               rest) = ScSeqExprSeq $ map prepare (consToList rest)
+               rest) = 
+           do
+              preparedExprs <- mapM prepare (consToList rest)
+              return $ ScSeqExprSeq preparedExprs
      prepare cons@(ScCons symbol@(ScSymbol name) rest)  | not $ isSpecialForm name =
-       ScSeqApplication (prepare symbol) $ map prepare (consToList rest)
+       do
+         prepSymbol <- prepare symbol
+         prepArgs   <- mapM prepare (consToList rest)
+         return $ ScSeqApplication prepSymbol prepArgs
 
 
      eval expr env =
@@ -106,7 +132,7 @@ module ScEval where
   evalExpr :: ScExecutable a => (Expr a) -> (Env a) -> ScInterpreterMonad (Expr a)
   evalExpr expr env =
     do 
-      prepared <- return $ prepare expr
+      prepared <- prepare expr
       eval prepared env
   consToList :: ScExecutable a => (Expr a) ->  [Expr a]        
   consToList (ScCons next rest) = next : consToList rest

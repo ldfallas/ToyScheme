@@ -13,7 +13,7 @@ module ScEnv where
 
 
        class ScExecutable a where
-          prepare :: (Expr a) -> a
+          prepare :: (Expr a) -> ScInterpreterMonad a
           eval :: a -> (Env a) -> ScInterpreterMonad (Expr a)
           apply :: (Expr a) -> [(Expr a)] -> (Env a) -> ScInterpreterMonad (Expr a)
 

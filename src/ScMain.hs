@@ -19,7 +19,7 @@ module Main where
                  Right asts ->
                     do
                        env <- createRootEnv
-                       runErrorT $ evs [prepare x | x <- asts] env
+                       runErrorT $ evs asts env
                        return ()
                  _ ->
                     print "Parse error reading file"
@@ -27,6 +27,8 @@ module Main where
        _ -> print "Incorrect number of argument for application"
    
    where
-       evs :: [ScSeqExp] ->  (Env ScSeqExp) -> ScInterpreterMonad (Expr ScSeqExp)
+       evs :: [Expr ScSeqExp] ->  (Env ScSeqExp) -> ScInterpreterMonad (Expr ScSeqExp)
        evs exprs env =
-         evaluateExpressionSequence exprs env
+         do
+             prepExprs <- mapM prepare exprs
+             evaluateExpressionSequence prepExprs env
