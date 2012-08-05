@@ -19,8 +19,10 @@ module Main where
                  Right asts ->
                     do
                        env <- createRootEnv
-                       runErrorT $ evs asts env
-                       return ()
+                       evalResult <- runErrorT $ evs asts env
+                       case evalResult of
+                         Left error -> print error
+                         _ -> return ()
                  _ ->
                     print "Parse error reading file"
               

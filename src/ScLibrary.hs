@@ -99,8 +99,7 @@ module ScLibrary where
    where
       writePrimitive [ first ] = 
           do
-             --write' <- liftIO print
-             liftIO $ print (renderExpr first)
+             liftIO $ putStr (renderExpr first)
              return ScNil
       writePrimitive _ = throwError "Incorrect arguments for write"
 
