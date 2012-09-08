@@ -1,3 +1,5 @@
+{-# LANGUAGE ViewPatterns #-}
+
 module ScEval where
 
   import ScEnv
@@ -38,13 +40,7 @@ module ScEval where
 
      prepare nil@ScNil = return $ ScSeqLiteral nil
 
-     prepare (ScCons 
-               (ScSymbol "define")
-               (ScCons 
-                   name@(ScSymbol symbolToDefine)
-                   (ScCons
-                      value
-                      ScNil))) = 
+     prepare (defineView -> Just (symbolToDefine, value)) = 
               do
                  preparedValue <- prepare value
                  return $ ScSeqDefine symbolToDefine preparedValue 
@@ -173,4 +169,22 @@ module ScEval where
              evaluateExpressionSequence rest env
   
   
-
+  defineView :: (Expr a) -> Maybe (String, Expr a)
+  defineView  (ScCons 
+               (ScSymbol "define")
+               (ScCons 
+                   name@(ScSymbol symbolToDefine)
+                   (ScCons
+                      value
+                      ScNil))) = Just (symbolToDefine, value)
+  defineView  (ScCons 
+                  (ScSymbol "define")
+                  (ScCons 
+                     (ScCons 
+                        name@(ScSymbol symbolToDefine)
+                        args)
+                     (ScCons
+                         value
+                         ScNil))) = Just (symbolToDefine, 
+                                          (ScCons (ScSymbol "lambda") (ScCons args (ScCons value ScNil))))
+  defineView _ = Nothing

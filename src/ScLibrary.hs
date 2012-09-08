@@ -98,6 +98,7 @@ module ScLibrary where
   portPrimitiveList =
      [
         ("write", ScPrimitive writePrimitive),
+        ("newline",ScPrimitive newlinePrimitive)
         ("open-output-file", ScPrimitive openOutputFilePrimitive),
         ("close-output-port", ScPrimitive closeHandlePrimitive)
      ]
