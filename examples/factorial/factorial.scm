@@ -5,7 +5,7 @@
                 1))) 
 
 (write (fact1 5))
-(write " ")
+(newline)
 (define (fact2 x) 
         (if (> x 0)
             (* x (fact2 (- x 1)))

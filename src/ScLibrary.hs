@@ -113,11 +113,11 @@ module ScLibrary where
              return ScNil        
       writePrimitive _ = throwError "Incorrect arguments for write"
 
-      newlinePrimitive [ first ] = 
+      newlinePrimitive [  ] = 
           do
              liftIO $ putStr "\n"
              return ScNil 
-      newlinePrimitive [ expr, (ScPort handle)] =
+      newlinePrimitive [ (ScPort handle)] =
           do
              liftIO $ hPutStr handle $ "\n"
              return ScNil        
