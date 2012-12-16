@@ -98,7 +98,7 @@ module ScLibrary where
   portPrimitiveList =
      [
         ("write", ScPrimitive writePrimitive),
-        ("newline",ScPrimitive newlinePrimitive)
+        ("newline",ScPrimitive newlinePrimitive),
         ("open-output-file", ScPrimitive openOutputFilePrimitive),
         ("close-output-port", ScPrimitive closeHandlePrimitive)
      ]
@@ -110,8 +110,18 @@ module ScLibrary where
       writePrimitive [ expr, (ScPort handle)] =
           do
              liftIO $ hPutStr handle $ renderExpr expr
-             return ScNil       
+             return ScNil        
       writePrimitive _ = throwError "Incorrect arguments for write"
+
+      newlinePrimitive [ first ] = 
+          do
+             liftIO $ putStr "\n"
+             return ScNil 
+      newlinePrimitive [ expr, (ScPort handle)] =
+          do
+             liftIO $ hPutStr handle $ "\n"
+             return ScNil        
+      newlinePrimitive _ = throwError "Incorrect arguments for newline"
 
       openOutputFilePrimitive [ ScString fileName ] =
         -- TODO add error handling
