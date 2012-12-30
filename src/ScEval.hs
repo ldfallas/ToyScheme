@@ -14,6 +14,7 @@ module ScEval where
   isSpecialForm "lambda" = True
   isSpecialForm name = False
 
+  
 
   data ScSeqExp =
      ScSeqLiteral (Expr ScSeqExp) 
@@ -48,13 +49,13 @@ module ScEval where
      prepare (ScCons 
                (ScSymbol "lambda")
                (ScCons 
-                   (ScCons (ScSymbol argumentName) ScNil)
+                   (paramsView -> Just params)--(ScCons (ScSymbol argumentName) ScNil)
                    (ScCons
                       expr
                       ScNil))) = 
              do
                preparedLambdaBody <- prepare expr 
-               return $ ScSeqLambdaCreation [argumentName]  preparedLambdaBody
+               return $ ScSeqLambdaCreation params  preparedLambdaBody
 
      prepare  (ScCons 
                (ScSymbol "if")
@@ -82,6 +83,7 @@ module ScEval where
          prepArgs   <- mapM prepare (consToList rest)
          return $ ScSeqApplication prepSymbol prepArgs
 
+     
 
      eval expr env =
         case expr of
@@ -169,6 +171,16 @@ module ScEval where
              evaluateExpressionSequence rest env
   
   
+  paramsView :: (Expr a) -> Maybe [String]
+  paramsView argExpr =
+      flattenArgs argExpr []
+   where
+
+      flattenArgs :: (Expr a) -> [String] -> Maybe [String]
+      flattenArgs (ScCons (ScSymbol argName) rest) args | (notElem argName args) =
+         flattenArgs rest (argName : args)
+      flattenArgs ScNil args = Just $ reverse args
+      flattenArgs _ _ = Nothing
   defineView :: (Expr a) -> Maybe (String, Expr a)
   defineView  (ScCons 
                (ScSymbol "define")

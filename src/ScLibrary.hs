@@ -44,6 +44,14 @@ module ScLibrary where
   gtNumericValue (ScNumber x) (ScDouble y) =  return (ScBool $ (fromInteger x) > y)
   gtNumericValue _ _ = throwError "Incorrect plus arguments"
 
+  equalNumericValue ::  ScExecutable a => Expr a -> Expr a -> ScInterpreterMonad (Expr a)
+  equalNumericValue (ScNumber x) (ScNumber y) =  return (ScBool $ x == y)
+  equalNumericValue (ScDouble x) (ScDouble y) =  return (ScBool $ x == y)
+  equalNumericValue (ScDouble x) (ScNumber y) =  return (ScBool $ x == (fromInteger y))
+  equalNumericValue (ScNumber x) (ScDouble y) =  return (ScBool $ (fromInteger x) == y)
+  equalNumericValue _ _ = throwError "Incorrect plus arguments"
+
+
   plusPrimitive ::  ScExecutable a => Expr a
   plusPrimitive =
     ScPrimitive plusCode
@@ -65,6 +73,15 @@ module ScLibrary where
    where
      gtCode [first,rest] = gtNumericValue first rest
      gtCode _ = return (ScBool False)             
+
+
+  equalPrimitive :: ScExecutable a => Expr a
+  equalPrimitive =
+    ScPrimitive eqCode
+   where
+     eqCode [first,rest] = equalNumericValue first rest
+     eqCode _ = return (ScBool False)             
+
 
   timesPrimitive :: ScExecutable a => Expr a
   timesPrimitive =
@@ -145,7 +162,8 @@ module ScLibrary where
       primitives <- return  ([("+", plusPrimitive),
                              ("-", minusPrimitive),
                              (">", gtPrimitive),
-                             ("*", timesPrimitive)]
+                             ("*", timesPrimitive),
+                             ("=", equalPrimitive)]
                             ++ listPrimitiveList
                             ++ portPrimitiveList)
       bindingVars <- mapM (\(name,primitive) ->
